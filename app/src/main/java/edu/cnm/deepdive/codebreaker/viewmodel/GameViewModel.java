@@ -22,13 +22,13 @@ public class GameViewModel extends AndroidViewModel implements LifecycleObserver
   private final MutableLiveData<Throwable> throwable;
   private final CompositeDisposable pending;
 
-  public GameViewModel(@NonNull @NotNull Application application) {
+  public GameViewModel(@NonNull Application application) {
     super(application);
     repository = new GameRepository(application);
     game = new MutableLiveData<>();
     throwable = new MutableLiveData<>();
     pending = new CompositeDisposable();
-
+    startGame();
   }
   public LiveData<Game> getGame() {
     return game;
