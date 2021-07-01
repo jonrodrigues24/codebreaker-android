@@ -46,6 +46,7 @@ public class GameRepository {
         .submitGuess(game.getId(), guess)
         .map((completedGuess) -> {
           game.getGuesses().add(completedGuess);
+          game.setSolved(completedGuess.isSolution());
           return game;
         })
         .subscribeOn(Schedulers.io());
