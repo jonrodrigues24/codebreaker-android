@@ -1,6 +1,8 @@
 package edu.cnm.deepdive.codebreaker.controller;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -20,10 +22,11 @@ import edu.cnm.deepdive.codebreaker.viewmodel.HomeViewModel;
 import java.util.Locale;
 import org.jetbrains.annotations.NotNull;
 
-public class  PlayFragment extends Fragment {
+public class  PlayFragment extends Fragment implements TextWatcher {
 
   private FragmentPlayBinding binding;
   private GameViewModel viewModel;
+  private int codelength;
 
 
   public View onCreateView(
@@ -34,6 +37,7 @@ public class  PlayFragment extends Fragment {
       viewModel.submitGuess(binding.guess.getText().toString().trim().toUpperCase(Locale.ROOT));
       binding.guess.setText("");
     });
+    binding.guess.addTextChangedListener(this);
     return binding.getRoot();
   }
 
@@ -44,15 +48,35 @@ public class  PlayFragment extends Fragment {
     viewModel = new ViewModelProvider(getActivity()).get(GameViewModel.class);
     viewModel.getGame().observe(getViewLifecycleOwner(), (game) -> {
       /* TODO Update game display prettier */
+      codelength = game.getLength();
       if (game.isSolved()) {
         binding.guess.setEnabled(false);
         binding.submit.setEnabled(false);
       } else {
         binding.guess.setEnabled(true);
-        binding.submit.setEnabled(true);
+        enforceSubmitConditions();
       }
       SimpleGuessAdapter adapter = new SimpleGuessAdapter(getContext(), game.getGuesses());
       binding.guessList.setAdapter(adapter);
     });
+  }
+
+  @Override
+  public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+  }
+
+  @Override
+  public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+  }
+
+  @Override
+  public void afterTextChanged(Editable s) {
+    enforceSubmitConditions();
+  }
+
+  private void enforceSubmitConditions() {
+    binding.submit.setEnabled(binding.guess.getText().toString().trim().length() == codelength);
   }
 }
