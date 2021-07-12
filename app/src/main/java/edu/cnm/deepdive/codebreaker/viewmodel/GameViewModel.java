@@ -18,7 +18,6 @@ import edu.cnm.deepdive.codebreaker.model.Game;
 import edu.cnm.deepdive.codebreaker.service.GameRepository;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.functions.Consumer;
-import org.jetbrains.annotations.NotNull;
 
 public class GameViewModel extends AndroidViewModel implements LifecycleObserver {
 
@@ -28,22 +27,30 @@ public class GameViewModel extends AndroidViewModel implements LifecycleObserver
   private final MutableLiveData<Throwable> throwable;
   private final CompositeDisposable pending;
   private final SharedPreferences preferences;
+  private final String basePool;
 
   public GameViewModel(@NonNull Application application) {
     super(application);
     repository = new GameRepository(application);
     game = new MutableLiveData<>();
-    pool = new MutableLiveData<>("ABCDEF");
     throwable = new MutableLiveData<>();
     pending = new CompositeDisposable();
     preferences = PreferenceManager.getDefaultSharedPreferences(application);
+    String[] emojis = application.getResources().getStringArray(R.array.emojis);
+    StringBuilder builder  = new StringBuilder();
+    for (String emoji : emojis) {
+      builder.append(emoji);
+    }
+    basePool = builder.toString();
+    pool = new MutableLiveData<>(basePool);
     startGame();
   }
+
   public LiveData<Game> getGame() {
     return game;
   }
 
-  public MutableLiveData<String> getPool() {
+  public LiveData<String> getPool() {
     return pool;
   }
 
@@ -65,17 +72,19 @@ public class GameViewModel extends AndroidViewModel implements LifecycleObserver
 
   public void submitGuess(String text) {
     throwable.setValue(null);
+    //noinspection ConstantConditions
     pending.add(
-        repository.addGuess(game.getValue(), text)
+        repository
+            .addGuess(game.getValue(), text)
             .subscribe(
                 game::postValue,
-            this::handleThrowable
-        )
+                this::handleThrowable
+            )
     );
   }
 
   @OnLifecycleEvent(Event.ON_STOP)
-  private void clearPending () {
+  private void clearPending() {
     pending.clear();
   }
 
@@ -83,10 +92,13 @@ public class GameViewModel extends AndroidViewModel implements LifecycleObserver
     Log.e(getClass().getName(), throwable.getMessage(), throwable);
     this.throwable.postValue(throwable);
   }
+
   private int getCodeLengthPref() {
     Context context = getApplication();
     Resources res = context.getResources();
     return preferences.getInt(res.getString(R.string.code_length_pref_key),
         res.getInteger(R.integer.code_length_pref_default));
   }
+
 }
+

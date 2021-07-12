@@ -2,45 +2,39 @@ package edu.cnm.deepdive.codebreaker.controller;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.InputFilter;
-import android.text.Spanned;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.RecyclerView;
 import edu.cnm.deepdive.codebreaker.R;
 import edu.cnm.deepdive.codebreaker.adapter.SimpleGuessAdapter;
 import edu.cnm.deepdive.codebreaker.databinding.FragmentPlayBinding;
 import edu.cnm.deepdive.codebreaker.model.Game;
+import edu.cnm.deepdive.codebreaker.model.Guess;
 import edu.cnm.deepdive.codebreaker.viewmodel.GameViewModel;
-import edu.cnm.deepdive.codebreaker.viewmodel.HomeViewModel;
-import java.util.Locale;
-import org.jetbrains.annotations.NotNull;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public class  PlayFragment extends Fragment implements InputFilter {
+public class PlayFragment extends Fragment {
 
-  private static final String ILLEGAL_CHARACTERS_FORMAT = "[^%s]+";
   private FragmentPlayBinding binding;
   private GameViewModel viewModel;
-  private int codelength;
+  private int codeLength;
   private String pool;
-  private String illegalCharacters;
-
+  private Spinner[] spinners;
 
   @Override
-  public void onCreate(@Nullable @org.jetbrains.annotations.Nullable Bundle savedInstanceState) {
+  public void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setHasOptionsMenu(true);
   }
@@ -48,49 +42,74 @@ public class  PlayFragment extends Fragment implements InputFilter {
   public View onCreateView(
       @NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
     binding = FragmentPlayBinding.inflate(inflater, container, false);
-    binding.submit.setOnClickListener(v -> {
-      /*, TODO Submit guess to viewmodel */
-      viewModel.submitGuess(binding.guess.getText().toString().trim().toUpperCase(Locale.ROOT));
-      binding.guess.setText("");
+    binding.submit.setOnClickListener((v) -> {
+      // TODO Submit guess (from spinners) to viewmodel.
+      StringBuilder builder = new StringBuilder();
+      for (int i = 0; i < codeLength; i++) {
+        String emoji = (String) spinners[i].getSelectedItem();
+        builder.append(emoji);
+      }
+      viewModel.submitGuess(builder.toString());
     });
-    binding.guess.setFilters(new InputFilter[]{this});
+    spinners = setupSpinners(
+        binding.guessContainer, getResources().getInteger(R.integer.code_length_pref_max));
     return binding.getRoot();
   }
 
   @Override
-  public void onViewCreated(@NonNull View view,
-      @Nullable @org.jetbrains.annotations.Nullable Bundle savedInstanceState) {
+  public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
+    //noinspection ConstantConditions
     viewModel = new ViewModelProvider(getActivity()).get(GameViewModel.class);
     viewModel.getGame().observe(getViewLifecycleOwner(), this::update);
-    }
+  }
 
   private void update(Game game) {
-    /* TODO Update game display prettier */
-    codelength = game.getLength();
+    // TODO Make game display prettier.
+    codeLength = game.getLength();
     pool = game.getPool();
-    illegalCharacters = String.format(ILLEGAL_CHARACTERS_FORMAT, pool);
+    // TODO Update visibility & contents of spinners.
+    List<String> emojis = pool
+        .codePoints()
+        .mapToObj((codePoint) -> new String(new int[]{codePoint}, 0, 1))
+        .collect(Collectors.toList());
+    List<Guess> guesses = game.getGuesses();
+    Guess lastGuess = guesses.isEmpty() ? null : guesses.get(guesses.size() - 1);
+    for (int i = 0; i < spinners.length; i++) {
+      spinners[i].setVisibility((i < codeLength) ? View.VISIBLE : View.GONE);
+      ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),
+          R.layout.item_emoji, emojis);
+      adapter.setDropDownViewResource(R.layout.item_emoji_dropdown);
+      spinners[i].setAdapter(adapter);
+      if (lastGuess != null) {
+        String selection = new String(new int[]{lastGuess.getText().codePointAt(i)}, 0, 1);
+        for (int j = 0; j < spinners[i].getChildCount(); j++) {
+          if (spinners[i].getItemAtPosition(j).equals(selection)) {
+            spinners[i].setSelection(j);
+          }
+        }
+      }
+    }
     if (game.isSolved()) {
-      binding.guess.setEnabled(false);
-      binding.submit.setEnabled(false);
+      binding.guessContainer.setVisibility(View.INVISIBLE);
+      binding.submit.setVisibility(View.INVISIBLE);
     } else {
-      binding.guess.setEnabled(true);
-      enforceSubmitConditions(binding.guess.length());
+      binding.guessContainer.setVisibility(View.VISIBLE);
+      binding.submit.setVisibility(View.VISIBLE);
     }
     SimpleGuessAdapter adapter = new SimpleGuessAdapter(getContext(), game.getGuesses());
     binding.guessList.setAdapter(adapter);
   }
 
   @Override
-  public void onCreateOptionsMenu(@NonNull @NotNull Menu menu,
-      @NonNull @NotNull MenuInflater inflater) {
+  public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
     super.onCreateOptionsMenu(menu, inflater);
     inflater.inflate(R.menu.play_options, menu);
   }
 
   @SuppressLint("NonConstantResourceId")
   @Override
-  public boolean onOptionsItemSelected(@NonNull @NotNull MenuItem item) {
+  public boolean onOptionsItemSelected(@NonNull MenuItem item) {
     boolean handled = true;
     //noinspection SwitchStatementWithTooFewBranches
     switch (item.getItemId()) {
@@ -103,27 +122,40 @@ public class  PlayFragment extends Fragment implements InputFilter {
     return handled;
   }
 
-
-
   private void enforceSubmitConditions(int newLength) {
-    binding.submit.setEnabled(newLength == codelength);
+    binding.submit.setEnabled(newLength == codeLength);
   }
 
-  @Override
-  public CharSequence filter(CharSequence source, int sourceStart, int sourceEnd,
-      Spanned dest, int destStart, int destEnd) {
-    String modifiedSource = source
-        .subSequence(sourceStart, sourceEnd)
-        .toString()
-        .toUpperCase()
-        .replaceAll(illegalCharacters, "");
-    StringBuilder builder = new StringBuilder(dest);
-    builder.replace(destStart, destEnd, modifiedSource);
-    if (builder.length() > codelength) {
-      modifiedSource = modifiedSource.substring(0, modifiedSource.length() - (builder.length() - codelength));
+  private Spinner[] setupSpinners(ConstraintLayout layout, int numSpinners) {
+    Spinner[] spinners = new Spinner[numSpinners];
+    for (int i = 0; i < spinners.length; i++) {
+      Spinner spinner =
+          (Spinner) getLayoutInflater().inflate(R.layout.spinner_emoji, layout, false);
+      layout.addView(spinner);
+      spinner.setId(View.generateViewId());
+      spinners[i] = spinner;
     }
-    int newLength = dest.length() - (destEnd - destStart) + modifiedSource.length();
-    enforceSubmitConditions(newLength);
-    return modifiedSource;
+    int layoutId = layout.getId();
+    ConstraintSet constraints = new ConstraintSet();
+    constraints.clone(layout);
+    for (int i = 0; i < spinners.length; i++) {
+      Spinner spinner = spinners[i];
+      int spinnerId = spinner.getId();
+      constraints.connect(
+          spinnerId, ConstraintSet.START,
+          (i > 0) ? spinners[i - 1].getId() : layoutId,
+          (i > 0) ? ConstraintSet.END : ConstraintSet.START
+      );
+      constraints.connect(
+          spinnerId, ConstraintSet.END,
+          (i < spinners.length - 1) ? spinners[i + 1].getId() : layoutId,
+          (i < spinners.length - 1) ? ConstraintSet.START : ConstraintSet.END
+      );
+      constraints.connect(spinnerId, ConstraintSet.TOP, layoutId, ConstraintSet.TOP);
+      constraints.connect(spinnerId, ConstraintSet.BOTTOM, layoutId, ConstraintSet.BOTTOM);
+    }
+    constraints.applyTo(layout);
+    return spinners;
   }
+
 }
