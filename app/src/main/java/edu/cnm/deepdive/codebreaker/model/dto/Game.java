@@ -1,21 +1,18 @@
-package edu.cnm.deepdive.codebreaker.model;
+package edu.cnm.deepdive.codebreaker.model.dto;
 
-import androidx.room.ColumnInfo;
-import androidx.room.Entity;
-import androidx.room.Ignore;
-import androidx.room.PrimaryKey;
 import com.google.gson.annotations.Expose;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
-//creates instances from outside entities like online databases
-@Entity
+/**
+ * Encapsulates the state of a single game (secret code &amp; solution status). An instance of this
+ * class, with only the essential fields set, is sent to the web service to start a new game; the
+ * service returns an instance (as JSON) with the remaining fields set.
+ */
 public class Game {
 
   @Expose
-  @PrimaryKey
-  @ColumnInfo(name = "game_id")
   private String id;
 
   @Expose
@@ -28,19 +25,28 @@ public class Game {
   private int length;
 
   @Expose
-  @ColumnInfo(name = "guess_count")
   private int guessCount;
 
   @Expose
   private boolean solved;
 
-  @Ignore
   private final List<Guess> guesses = new LinkedList<>();
 
+  /**
+   * Returns the unique Id of this instance.
+   *
+   * @return
+   */
   public String getId() {
     return id;
   }
 
+  /**
+   * Sets the unique Id of this instance. This method may be (but isn't) invoked by Gson to set the
+   * value of this field from the JSON object returned by the web service.
+   *
+   * @param id
+   */
   public void setId(String id) {
     this.id = id;
   }
@@ -88,4 +94,6 @@ public class Game {
   public List<Guess> getGuesses() {
     return guesses;
   }
+
 }
+

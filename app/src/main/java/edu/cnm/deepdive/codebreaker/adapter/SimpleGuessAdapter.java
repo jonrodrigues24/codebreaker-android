@@ -3,7 +3,6 @@ package edu.cnm.deepdive.codebreaker.adapter;
 import android.content.Context;
 import android.graphics.Color;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
@@ -12,9 +11,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import edu.cnm.deepdive.codebreaker.R;
 import edu.cnm.deepdive.codebreaker.adapter.SimpleGuessAdapter.Holder;
 import edu.cnm.deepdive.codebreaker.databinding.ItemGuessBinding;
-import edu.cnm.deepdive.codebreaker.model.Guess;
+import edu.cnm.deepdive.codebreaker.model.dto.Guess;
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
 
 public class SimpleGuessAdapter extends RecyclerView.Adapter<Holder> {
 
