@@ -61,6 +61,18 @@ public class GameRepository {
               receivedGuess.setGameId(game.getId());
               return receivedGuess;
             })
+            .flatMap((receivedGuess) -> {
+              Single<Guess> task;
+              if (receivedGuess.isSolution()) {
+                game.setSolved(true);
+                task = gameDao
+                    .update(game)
+                    .map((count) -> receivedGuess);
+              } else {
+                task = Single.just(receivedGuess);
+              }
+              return task;
+            })
             .flatMap(guessDao::insert)
             .map((id) -> game)
             : guessDao
@@ -82,10 +94,11 @@ public class GameRepository {
   }
 
   public LiveData<List<GameWithGuesses>> getScoreboard(int codeLength, int poolSize) {
-
     return gameDao.selectTopScores(codeLength, poolSize);
   }
+
 }
+
 
 
 
